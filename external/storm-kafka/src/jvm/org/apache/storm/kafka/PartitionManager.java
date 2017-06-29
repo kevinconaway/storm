@@ -253,6 +253,8 @@ public class PartitionManager {
                     _lostMessageCount.incrBy(omitted.size());
                 }
 
+                _pending.headMap(offset).clear();
+
                 LOG.warn("Removing the failed offsets for {} that are out of range: {}", _partition, omitted);
             }
 
