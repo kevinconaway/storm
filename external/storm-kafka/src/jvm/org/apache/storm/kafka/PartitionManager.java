@@ -358,7 +358,7 @@ public class PartitionManager {
         }
     }
 
-    private String committedPath() {
+    protected String committedPath() {
         return _spoutConfig.zkRoot + "/" + _spoutConfig.id + "/" + _partition.getId();
     }
 

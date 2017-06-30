@@ -17,6 +17,11 @@
  */
 package org.apache.storm.kafka;
 
+import kafka.admin.AdminUtils;
+import kafka.server.KafkaConfig;
+import kafka.server.KafkaServerStartable;
+import kafka.utils.ZKStringSerializer$;
+import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -28,9 +33,6 @@ import org.apache.curator.test.TestingServer;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
-
-import kafka.server.KafkaConfig;
-import kafka.server.KafkaServerStartable;
 
 /**
  * Date: 11/01/2014
@@ -45,6 +47,10 @@ public class KafkaTestBroker {
     private File logDir;
 
     public KafkaTestBroker() {
+        this(new Properties());
+    }
+
+    public KafkaTestBroker(Properties brokerProps) {
         try {
             server = new TestingServer();
             String zookeeperConnectionString = server.getConnectString();
@@ -53,7 +59,7 @@ public class KafkaTestBroker {
             zookeeper.start();
             port = InstanceSpec.getRandomPort();
             logDir = new File(System.getProperty("java.io.tmpdir"), "kafka/logs/kafka-test-" + port);
-            KafkaConfig config = buildKafkaConfig(zookeeperConnectionString);
+            KafkaConfig config = buildKafkaConfig(brokerProps, zookeeperConnectionString);
             kafka = new KafkaServerStartable(config);
             kafka.startup();
         } catch (Exception ex) {
@@ -61,8 +67,19 @@ public class KafkaTestBroker {
         }
     }
 
-    private kafka.server.KafkaConfig buildKafkaConfig(String zookeeperConnectionString) {
-        Properties p = new Properties();
+    public void createTopic(String topicName, int numPartitions, Properties properties) {
+        ZkClient zkClient = new ZkClient(getZookeeperConnectionString());
+        zkClient.setZkSerializer(ZKStringSerializer$.MODULE$);
+
+        try {
+            AdminUtils.createTopic(zkClient, topicName, numPartitions, 1, properties);
+        } finally {
+            zkClient.close();
+        }
+    }
+
+    private kafka.server.KafkaConfig buildKafkaConfig(Properties brokerProps, String zookeeperConnectionString) {
+        Properties p = new Properties(brokerProps);
         p.setProperty("zookeeper.connect", zookeeperConnectionString);
         p.setProperty("broker.id", "0");
         p.setProperty("port", "" + port);
@@ -72,6 +89,14 @@ public class KafkaTestBroker {
 
     public String getBrokerConnectionString() {
         return "localhost:" + port;
+    }
+
+    public String getZookeeperConnectionString() {
+        return server.getConnectString();
+    }
+
+    public int getZookeeperPort() {
+        return server.getPort();
     }
 
     public int getPort() {
