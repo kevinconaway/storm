@@ -33,6 +33,7 @@ import org.apache.curator.test.TestingServer;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Date: 11/01/2014
@@ -73,8 +74,33 @@ public class KafkaTestBroker {
 
         try {
             AdminUtils.createTopic(zkClient, topicName, numPartitions, 1, properties);
+
+            ensureTopicCreated(zkClient, topicName);
         } finally {
             zkClient.close();
+        }
+    }
+
+    private void ensureTopicCreated(ZkClient zkClient, String topicName) {
+        long maxWaitTime = TimeUnit.SECONDS.toNanos(30);
+        long waitTime = 0;
+        boolean topicExists = AdminUtils.topicExists(zkClient, topicName);
+
+        while (!topicExists && waitTime < maxWaitTime) {
+            long start = System.nanoTime();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while waiting for topic to be available");
+            }
+
+            waitTime += (System.nanoTime() - start);
+            topicExists = AdminUtils.topicExists(zkClient, topicName);
+        }
+
+        if (!topicExists) {
+            throw new RuntimeException("Could not create topic: " + topicName);
         }
     }
 
