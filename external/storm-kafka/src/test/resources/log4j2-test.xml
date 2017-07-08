@@ -19,11 +19,15 @@
     <Appenders>
         <Console name="A1" target="SYSTEM_OUT">
             <PatternLayout>
-                <pattern>%-4r [%t] %-5level %c{1} - %msg%n</pattern>
+                <pattern>%d{ISO8601} %p [%t] %c - %m%n</pattern>
             </PatternLayout>
         </Console>
     </Appenders>
     <Loggers>
+
+        <logger name="org.apache.zookeeper.server.FinalRequestProcessor" level="info"/>
+        <logger name="org.apache.zookeeper.ClientCnxn" level="info"/>
+
         <Root level="debug">
             <appender-ref ref="A1"/>
         </Root>
