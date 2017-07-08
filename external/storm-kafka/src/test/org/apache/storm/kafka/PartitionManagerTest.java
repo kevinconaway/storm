@@ -132,11 +132,11 @@ public class PartitionManagerTest {
             sendMessage("message-" + i);
         }
 
-        Assert.assertEquals(EmitState.EMITTED_MORE_LEFT, partitionManager.next(spoutOutputCollector));
-        Assert.assertEquals(EmitState.EMITTED_MORE_LEFT, partitionManager.next(spoutOutputCollector));
-        Assert.assertEquals(EmitState.EMITTED_MORE_LEFT, partitionManager.next(spoutOutputCollector));
-        Assert.assertEquals(EmitState.EMITTED_MORE_LEFT, partitionManager.next(spoutOutputCollector));
-        Assert.assertEquals(EmitState.EMITTED_END, partitionManager.next(spoutOutputCollector));
+        waitForEmitState(partitionManager, spoutOutputCollector, EmitState.EMITTED_MORE_LEFT);
+        waitForEmitState(partitionManager, spoutOutputCollector, EmitState.EMITTED_MORE_LEFT);
+        waitForEmitState(partitionManager, spoutOutputCollector, EmitState.EMITTED_MORE_LEFT);
+        waitForEmitState(partitionManager, spoutOutputCollector, EmitState.EMITTED_MORE_LEFT);
+        waitForEmitState(partitionManager, spoutOutputCollector, EmitState.EMITTED_END);
 
         partitionManager.commit();
 
@@ -157,7 +157,7 @@ public class PartitionManagerTest {
 
         // First request will fail due to offset out of range
         Assert.assertEquals(EmitState.NO_EMITTED, partitionManager.next(spoutOutputCollector));
-        Assert.assertEquals(EmitState.EMITTED_END, partitionManager.next(spoutOutputCollector));
+        waitForEmitState(partitionManager, spoutOutputCollector, EmitState.EMITTED_END);
 
         emitted = outputCollector.getEmitted();
 
@@ -172,6 +172,29 @@ public class PartitionManagerTest {
         long committedOffset = (long) json.get("offset");
 
         Assert.assertEquals(messageId.offset + 1, committedOffset);
+    }
+
+    private void waitForEmitState(PartitionManager partitionManager, SpoutOutputCollector outputCollector, EmitState expectedState) {
+        int maxRetries = 5;
+        EmitState state = null;
+
+        for (int retryCount = 0; retryCount < maxRetries; retryCount++) {
+            state = partitionManager.next(outputCollector);
+
+            if (state == EmitState.NO_EMITTED) {
+                retryCount++;
+                try {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for message");
+                }
+            } else {
+                break;
+            }
+        }
+
+        Assert.assertEquals(expectedState, state);
     }
 
     private void sendMessage(String value) {
