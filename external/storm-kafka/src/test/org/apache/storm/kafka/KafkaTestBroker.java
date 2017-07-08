@@ -18,6 +18,9 @@
 package org.apache.storm.kafka;
 
 import kafka.admin.AdminUtils;
+import kafka.api.PartitionMetadata;
+import kafka.api.TopicMetadata;
+import kafka.common.ErrorMapping;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import kafka.utils.ZKStringSerializer$;
@@ -29,6 +32,7 @@ import org.apache.curator.framework.imps.CuratorFrameworkState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.test.InstanceSpec;
 import org.apache.curator.test.TestingServer;
+import scala.collection.JavaConversions;
 
 import java.io.File;
 import java.io.IOException;
@@ -93,25 +97,38 @@ public class KafkaTestBroker {
         }
     }
 
+
+    /**
+     * Wait for up to 30 seconds for the topic to be created and leader assignments for all partitions
+     */
     private void ensureTopicCreated(ZkClient zkClient, String topicName) {
         long maxWaitTime = TimeUnit.SECONDS.toNanos(30);
         long waitTime = 0;
-        boolean topicExists = AdminUtils.topicExists(zkClient, topicName);
+        boolean partitionsHaveLeaders = false;
 
-        while (!topicExists && waitTime < maxWaitTime) {
-            long start = System.nanoTime();
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Interrupted while waiting for topic to be available");
+        while (!partitionsHaveLeaders && waitTime < maxWaitTime) {
+            partitionsHaveLeaders = true;
+            TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topicName, zkClient);
+            for (PartitionMetadata partitionMetadata : JavaConversions.seqAsJavaList(topicMetadata.partitionsMetadata())) {
+                if (partitionMetadata.leader().isEmpty() || partitionMetadata.errorCode() != ErrorMapping.NoError()) {
+                    partitionsHaveLeaders = false;
+                }
             }
 
-            waitTime += (System.nanoTime() - start);
-            topicExists = AdminUtils.topicExists(zkClient, topicName);
+            if (!partitionsHaveLeaders) {
+                long start = System.nanoTime();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for topic to be available");
+                }
+
+                waitTime += (System.nanoTime() - start);
+            }
         }
 
-        if (!topicExists) {
+        if (!partitionsHaveLeaders) {
             throw new RuntimeException("Could not create topic: " + topicName);
         }
     }
