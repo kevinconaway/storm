@@ -121,6 +121,7 @@ public class KafkaTestBroker {
         p.setProperty("zookeeper.connect", zookeeperConnectionString);
         p.setProperty("broker.id", "0");
         p.setProperty("port", "" + port);
+        p.setProperty("host.name", "127.0.0.1");
         p.setProperty("log.dirs", logDir.getAbsolutePath());
         return new KafkaConfig(p);
     }

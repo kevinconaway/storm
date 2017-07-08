@@ -65,7 +65,7 @@ public class PartitionManagerTest {
 
         Map<String, Object> conf = new HashMap<>();
         conf.put(Config.TRANSACTIONAL_ZOOKEEPER_PORT, broker.getZookeeperPort());
-        conf.put(Config.TRANSACTIONAL_ZOOKEEPER_SERVERS, Collections.singletonList("localhost"));
+        conf.put(Config.TRANSACTIONAL_ZOOKEEPER_SERVERS, Collections.singletonList("127.0.0.1"));
         conf.put(Config.STORM_ZOOKEEPER_SESSION_TIMEOUT, 20000);
         conf.put(Config.STORM_ZOOKEEPER_CONNECTION_TIMEOUT, 20000);
         conf.put(Config.STORM_ZOOKEEPER_RETRY_TIMES, 3);
