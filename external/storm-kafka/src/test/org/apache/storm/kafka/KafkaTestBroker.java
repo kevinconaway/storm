@@ -53,7 +53,19 @@ public class KafkaTestBroker {
 
     public KafkaTestBroker(Properties brokerProps) {
         try {
-            server = new TestingServer();
+            InstanceSpec spec = new InstanceSpec(
+                null,
+                -1,
+                -1,
+                -1,
+                true,
+                -1,
+                -1,
+                -1,
+                null,
+                "127.0.0.1"
+            );
+            server = new TestingServer(spec, true);
             String zookeeperConnectionString = server.getConnectString();
             ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
             zookeeper = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
@@ -114,7 +126,7 @@ public class KafkaTestBroker {
     }
 
     public String getBrokerConnectionString() {
-        return "localhost:" + port;
+        return "127.0.0.1:" + port;
     }
 
     public String getZookeeperConnectionString() {
